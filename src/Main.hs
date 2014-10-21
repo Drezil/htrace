@@ -2,6 +2,8 @@
 module Main where
 
 import Control.Applicative
+import Codec.Picture.Png
+import Codec.Picture.Types
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
 
@@ -65,8 +67,9 @@ validateScene obs = do
                    , sceneObjects = objects
                    }
 
-render :: Scene -> IO ()
-render s = putStrLn "rendering currently not implemented"
+render :: Scene -> Image PixelRGB8
+render s = generateImage pixelRenderer 250 300
+    where pixelRenderer x y = PixelRGB8 128 128 128
 
 main :: IO ()
 main = do
@@ -80,4 +83,5 @@ main = do
                 Left error -> putStrLn $ "Error: " ++ error
                 Right s -> do
                     print s
-                    render s
+                    im <- return $ render s
+                    writePng "out.png" im
