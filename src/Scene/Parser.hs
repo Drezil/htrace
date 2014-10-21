@@ -1,23 +1,44 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Scene.Parser where
 
-import Data.Attoparsec
+import Control.Applicative
+import Data.Attoparsec.ByteString.Char8
 import Data.Functor
 import Data.ByteString as B
 import Data.ByteString.Char8 as B8
+import Linear.V3
+
 import Scene.Types
+
+import Debug.Trace
 
 partitionEithers :: [Either a b] -> ([a],[b])
 partitionEithers e = go e ([],[])
     where
         go (Left a:as)  (xs,ys) = go as (a:xs,ys)
         go (Right b:bs) (xs,ys) = go bs (xs,b:ys)
+        go []           (xs,ys) = (xs,ys)
 
-parseScene :: FilePath -> IO ([String],[SceneObject])
-parseScene f = do
-            s <- B.readFile f
-            return . partitionEithers $ eitherResult . parse parseObject <$> B8.lines s
+preprocess :: ByteString -> ByteString
+preprocess = B8.unlines . clean . B8.lines
+            where
+              clean :: [ByteString] -> [ByteString]
+              clean (a:as) = if B8.all isWhitespace a
+                                || B8.head a == '#'
+                             then clean as else a:clean as
+              clean [] = []
+              isWhitespace :: Char -> Bool
+              isWhitespace ' '  = True
+              isWhitespace '\t' = True
+              isWhitespace '\n' = True
+              isWhitespace '\r' = True
+              isWhitespace _    = False
 
-parseObject :: Parser SceneObject
+
+parseScene :: ByteString -> Either String [ObjectParser]
+parseScene s = parseOnly (many parseObject) (preprocess s)
+
+parseObject :: Parser ObjectParser
 parseObject = do
         t    <- string "camera" <|> 
                 string "depth" <|> 
@@ -29,12 +50,104 @@ parseObject = do
                 string "mesh"
         case t of
             "camera" -> parseCamera
-            _        -> undefined
+            "depth" -> do
+                        skipSpace
+                        d <- decimal
+                        endOfLine
+                        return $ OpR d
+            "background" -> do
+                        c <- parseVector
+                        endOfLine
+                        return $ OpB (Background c)
+            "ambience" -> do
+                        c <- parseVector
+                        endOfLine
+                        return $ OpA (Ambience c)
+            "light" -> do
+                        p <- parseVector
+                        skipSpace
+                        c <- parseVector
+                        intensity <- double <|> return 0
+                        i <- return $ if intensity == 0 
+                                         then Nothing 
+                                         else Just (fromRational . toRational $ intensity)
+                        endOfLine
+                        return $ OpL (Light p c i)
+            "sphere" -> parseSphere
+            "plane"  -> parsePlane
+            _ -> undefined
 
-parseCamera :: Parser SceneObject
+parseCamera :: Parser ObjectParser
 parseCamera = do
-        pos <- parseVector
+        eye'      <- parseVector
+        center'   <- parseVector
+        up'       <- parseVector
+        skipSpace
+        fovy'     <- double
+        skipSpace
+        width'    <- decimal
+        skipSpace
+        height'   <- decimal
+        endOfLine
+        return $ OpC $ Camera
+                        { eye = eye'
+                        , center = center'
+                        , up = up'
+                        , fovy = (fromRational . toRational) fovy'
+                        , width = width'
+                        , height = height'
+                        }
+
+parsePlane :: Parser ObjectParser
+parsePlane = do
+        c <- parseVector
+        n <- parseVector
+        m <- parseMaterial
+        endOfLine
+        return $ OpP Plane
+               { planeCenter = c
+               , planeNormal = n
+               , planeMaterial = m
+               }
+
+parseSphere :: Parser ObjectParser
+parseSphere = do
+        p <- parseVector
+        skipSpace
+        r <- double
+        m <- parseMaterial
+        endOfLine
+        return $ OpS Sphere
+               { sphereCenter = p
+               , sphereRadius = (fromRational . toRational) r
+               , sphereMaterial = m
+               }
+
+parseMaterial :: Parser Material
+parseMaterial = do
+        a <- parseVector
+        d <- parseVector
+        s <- parseVector
+        skipSpace
+        sh <- double
+        skipSpace
+        r <- double
+        return $ Material
+               { materialAmbience = a
+               , materialDiffuse = d
+               , materialSpec = s
+               , materialShinyness = (fromRational . toRational) sh
+               , materialReflection = (fromRational . toRational) r
+               }
 
 parseVector :: Parser (V3 Float)
 parseVector = do
-        undefined
+        skipSpace
+        a <- double
+        skipSpace
+        b <- double
+        skipSpace
+        c <- double
+        return $ V3 (f a) (f b) (f c)
+            where
+              f = fromRational . toRational --convert Double to Float
