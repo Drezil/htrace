@@ -6,11 +6,15 @@ import Codec.Picture.Png
 import Codec.Picture.Types
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
+import Data.Vector hiding ((++),map)
+import Data.Word (Word8)
 
 import Data.Attoparsec
 
 import Scene.Parser
 import Scene.Types
+
+import Debug.Trace
 
 findCamera :: [ObjectParser] -> Either String Camera
 findCamera []     = Left "No camera found"
@@ -50,8 +54,9 @@ filterObjects (a:as) = case a of
                       OpP p -> P p:filterObjects as
                       _ -> filterObjects as
 
-validateScene :: [ObjectParser] -> Either String Scene
-validateScene obs = do
+validateAndParseScene :: B8.ByteString -> Either String Scene
+validateAndParseScene f = do
+            obs <- parseScene f
             cam <- findCamera obs
             depth <- findDepth obs
             amb <- findAmbience obs
@@ -67,21 +72,30 @@ validateScene obs = do
                    , sceneObjects = objects
                    }
 
-render :: Scene -> Image PixelRGB8
-render s = generateImage pixelRenderer 250 300
-    where pixelRenderer x y = PixelRGB8 128 128 128
+render :: Int -> Int -> Scene -> Int -> PixelRGB8
+render w h s index = trace (show (x,y)) PixelRGB8 255 (fromIntegral x) (fromIntegral y)
+        where
+            y = index `mod` w
+            x = index `div` w
+
+data Ray = Ray (V3 Float) (V3 Float)
+
+data Collision = Collision (V3 Float) Float Collidable
+
+intersect :: Ray -> Collidable -> Maybe Collision
+intersect (Ray ro rd) (S (Sphere sc sr _) = undefined
+intersect _ = undefined
 
 main :: IO ()
 main = do
     f <- B.readFile "scenes/test.sce"
-    rawScene <- return $ parseScene f
-    case rawScene of
-        Left error -> putStrLn $ "error Parsing: " ++ error
-        Right raw -> do
-            scene <- return $ validateScene raw
-            case scene of
-                Left error -> putStrLn $ "Error: " ++ error
-                Right s -> do
-                    print s
-                    im <- return $ render s
-                    writePng "out.png" im
+    case validateAndParseScene f of
+      Left error -> putStrLn $ "Error: " ++ error
+      Right s -> do
+        let (w,h)  = (width . sceneCamera $ s, height . sceneCamera $ s)
+            imdata = map (render w h s) [0..w*h-1]
+            imvec  = fromList imdata
+            im     = generateImage (\x y -> imvec ! (x*w+y)) w h
+        print s
+        print (w,h)
+        writePng "out.png" im
