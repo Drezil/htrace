@@ -84,14 +84,14 @@ render w h s index = case pcolls of
             (Background (V3 br bg bb)) = sceneBackground s
             pcolls = map fromJust $ filter isJust $ (intersect ray) <$> (sceneObjects s)
             (Collision pos _ coll) = foldl1 min pcolls
-            ray = Ray (center cam) $ rotCam x y w h (eye cam) (up cam) (fovy cam)
+            ray = Ray (eye cam) $ rotCam x y w h (center cam) (up cam) (fovy cam)
             cam = sceneCamera s
             y = fromIntegral $ index `mod` w
             x = fromIntegral $ index `div` w
             ci = floor . (*255)
 
 rotCam :: Float -> Float -> Int -> Int -> V3 Float -> V3 Float -> Float -> V3 Float
-rotCam x y w h dir up fovy = rotxy 
+rotCam x y w h dir up fovy = rotxy
             where
                 rotxy = rotateDegAx (rad $ fovy*dy) (cross up roty) roty
                 roty  = rotateDegAx (rad $ fovy*dx) up dir
@@ -123,7 +123,7 @@ intersect (Ray ro rd) s@(S (Sphere sc sr _)) = if (d > 0 && int > 0) then
                                     c = dot oc oc - sr*sr
                                     d = b * b - 4 * a * c
                                     oc = ro ^-^ sc
-                                    int = case ints of 
+                                    int = case ints of
                                             [] -> 0
                                             a  -> foldl1 min a
                                     ints = filter (uncurry (&&).(&&&) (>0.00001) (not.isNaN)) [(-b-(sqrt d))/(2*a),(-b+(sqrt d))/(2*a)]
