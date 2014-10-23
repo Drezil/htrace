@@ -84,3 +84,8 @@ data Scene = Scene
            , sceneObjects    :: [Collidable]
            }
                 deriving (Show, Eq)
+
+getMaterial :: Collidable -> Material
+getMaterial (S (Sphere _ _ m)) = m
+getMaterial (P (Plane _ _ m)) = m
+getMaterial (M (Mesh _ _ m)) = m
