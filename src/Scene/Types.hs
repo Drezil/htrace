@@ -20,10 +20,14 @@ data Camera = Camera
 
 type RecursionDepth = Int
 
-data Background = Background Color
+data Background = Background 
+                { bgColor :: Color
+                }
                 deriving (Show, Eq)
 
-data Ambience = Ambience Color
+data Ambience = Ambience
+                { ambColor :: Color
+                }
                 deriving (Show, Eq)
 
 data Light = Light (V3 Float) Color (Maybe Intensity)
