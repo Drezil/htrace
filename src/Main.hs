@@ -81,7 +81,7 @@ main = do
         let (w,h)  = (width . sceneCamera $ s, height . sceneCamera $ s)
             imdata = map (render w h s) [0..w*h-1]
             imvec  = fromList imdata
-            im     = generateImage (\x y -> imvec ! (x*w+y)) w h
+            im     = generateImage (\x y -> imvec ! (x*w+(h-y-1))) w h
         print s
         print (w,h)
         writePng "out.png" im

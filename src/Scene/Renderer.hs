@@ -34,11 +34,13 @@ render w h s index = case pcolls of
             (Background (V3 br bg bb)) = sceneBackground s
             pcolls = map fromJust $ filter isJust $ (intersect ray) <$> (sceneObjects s)
             (Collision pos _ coll) = foldl1 min pcolls
-            ray = camRay x y (sceneCamera s) --Ray (eye cam) $ rotCam x y w h (center cam ^-^ eye cam) (up cam) (fovy cam)
-            cam = sceneCamera s
+            ray = camRay x y (sceneCamera s) 
             y = fromIntegral $ index `mod` w
             x = fromIntegral $ index `div` w
             ci = floor . (*255)
+            --wrong format:
+            --Ray (eye cam) $ rotCam x y w h (center cam ^-^ eye cam) (up cam) (fovy cam)
+            --cam = sceneCamera s
 
 camRay :: Float -> Float -> Camera -> Ray
 camRay x y c = Ray (eye c) (lowerLeft c ^+^ x *^ xDir c ^+^ y *^ yDir c ^-^ eye c)
