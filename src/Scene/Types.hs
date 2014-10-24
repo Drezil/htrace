@@ -6,12 +6,15 @@ type Color = V3 Float
 type Intensity = Float
 
 data Camera = Camera
-            { eye    :: V3 Float
-            , center :: V3 Float
-            , up     :: V3 Float
-            , fovy   :: Float
-            , width  :: Int
-            , height :: Int
+            { eye       :: V3 Float
+            , center    :: V3 Float
+            , up        :: V3 Float
+            , fovy      :: Float
+            , width     :: Int
+            , height    :: Int
+            , lowerLeft :: V3 Float
+            , xDir      :: V3 Float
+            , yDir      :: V3 Float
             }
                 deriving (Show, Eq)
 

@@ -1,12 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Scene.Parser where
+module Scene.Parser (parseScene) where
 
 import Control.Applicative
 import Data.Attoparsec.ByteString.Char8
 import Data.Functor
 import Data.ByteString as B
 import Data.ByteString.Char8 as B8
-import Linear.V3
+import Linear
 
 import Scene.Types
 
@@ -89,6 +89,17 @@ parseCamera = do
         skipSpace
         height'   <- decimal
         endOfLine
+        let     xDir' = (normalize $ cross (center' ^-^ eye') up') ^* (im_width / w)
+                yDir' = (normalize $ cross xDir' view) ^* (im_height / h)
+                lowerLeft' = center' ^-^ (0.5 * w *^ xDir')
+                                     ^-^ (0.5 * h *^ yDir')
+                im_height = 2*dist* tan (0.5*(frtr fovy')/180*pi)
+                im_width = w/h * im_height
+                view = (center' ^-^ eye')
+                dist = norm view
+                w = fromIntegral width'
+                h = fromIntegral height'
+                frtr = fromRational . toRational
         return $ OpC $ Camera
                         { eye = eye'
                         , center = center'
@@ -96,7 +107,12 @@ parseCamera = do
                         , fovy = (fromRational . toRational) fovy'
                         , width = width'
                         , height = height'
+                        , lowerLeft = lowerLeft'
+                        , xDir = xDir'
+                        , yDir = yDir'
                         }
+                        where
+                            
 
 parsePlane :: Parser ObjectParser
 parsePlane = do
