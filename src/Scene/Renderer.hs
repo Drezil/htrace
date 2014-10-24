@@ -38,10 +38,10 @@ render w h s index = PixelRGB8 (ci cr) (ci cg) (ci cb)
                   Just c@(Collision pos _ _ obj) ->
                          -- ambient lighting
                          ((ambColor . ambientLight $ s) * (materialAmbience . getMaterial $ obj))
-                         -- + diffuse lighting
-                         + (foldl1 (+) $ (diffuse c s) <$> sceneLights s)
-                         -- + reflections - TODO
-            ray = camRay x y (sceneCamera s)
+                         -- + diffuse/spec lighting
+                         + (foldl1 (+) $ (diffuseAndSpec c s co) <$> sceneLights s)
+                         -- + reflect -- TODO
+            ray@(Ray co _) = camRay x y (sceneCamera s)
             y = fromIntegral $ index `mod` w
             x = fromIntegral $ index `div` w
             ci = floor . (clamp 0 255) . (*255)
@@ -49,17 +49,26 @@ render w h s index = PixelRGB8 (ci cr) (ci cg) (ci cb)
             --Ray (eye cam) $ rotCam x y w h (center cam - eye cam) (up cam) (fovy cam)
             --cam = sceneCamera s
 
-diffuse :: Collision -> Scene -> Light -> V3 Float
-diffuse (Collision pos n _ obj) s (Light lpos color int) =
+-- | Collision-Information, Scene, view-position, light
+diffuseAndSpec :: Collision -> Scene -> V3 Float-> Light -> V3 Float
+diffuseAndSpec (Collision pos n _ obj) s co (Light lpos color int) =
             case blocked of
-                Nothing                   -> ill
+                Nothing                     -> diff + spec
                 Just (Collision _ _ dist _) -> if dist < norm lightdir
                                             then
                                                 V3 0 0 0 --light is blocked -> no lighting from here.
                                             else
-                                                ill
+                                                diff + spec
         where
-            ill = i * dot n (normalize lightdir) *^ color * materialDiffuse mat
+            spec = if dot n (normalize lightdir) < 0 || dot r v < 0
+                    then V3 0 0 0
+                    else i * (dot r v ** materialShinyness mat) *^ color * materialSpec mat
+            r = (dot n ld * 2 *^ n) - ld
+            ld = normalize lightdir
+            v = normalize $ co - pos
+            diff = if dot n (normalize lightdir) < 0
+                    then V3 0 0 0
+                    else i * dot n (normalize lightdir) *^ color * materialDiffuse mat
             mat = getMaterial obj
             blocked = raytrace (Ray pos lightdir) s
             lightdir = (lpos - pos)
@@ -107,8 +116,7 @@ intersect (Ray ro rd) s@(S (Sphere sc sr _)) = if (d > 0 && int > 0) then
                                     ints = filter (uncurry (&&).(&&&) (>epsilon) (not.isNaN)) [(-b-(sqrt d))/(2*a),(-b+(sqrt d))/(2*a)]
 intersect (Ray ro rd) p@(P (Plane pc pn _)) = if det == 0 || t < epsilon
                                                           then Nothing
-                                                          else Just -- $ D.trace (show (det, t, pos)) 
-                                                                    $ Collision pos pn t p
+                                                          else Just $ Collision pos pn t p
                             where
                                 pos = ro + t *^ rd'
                                 det = dot rd' pn
