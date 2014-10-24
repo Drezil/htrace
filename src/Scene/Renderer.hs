@@ -56,6 +56,7 @@ diffuse (Collision pos n _ obj) s (Light lpos color int) =
                                             else
                                                 ill
         where
+            --        angle of light               *     (color * material)
             ill = (*) (dot n $ normalize lightdir) <$> ((*) <$> color ^* i <*> materialDiffuse mat)
             mat = getMaterial obj
             blocked = raytrace (Ray pos lightdir) s
