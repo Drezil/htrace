@@ -122,7 +122,7 @@ parsePlane = do
         endOfLine
         return $ OpP Plane
                { planeCenter = c
-               , planeNormal = n
+               , planeNormal = normalize n
                , planeMaterial = m
                }
 

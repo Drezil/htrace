@@ -15,7 +15,7 @@ import Linear
 import Scene.Parser
 import Scene.Types
 
-import Debug.Trace
+import Debug.Trace as D
 
 data Ray = Ray (V3 Float) (V3 Float)
 
@@ -25,6 +25,9 @@ data Collision = Collision (V3 Float) (V3 Float) Float Collidable
 
 instance Ord Collision where
     compare (Collision _ _ a _) (Collision _ _ b _) = compare a b
+
+epsilon :: Float
+epsilon = 0.00001
 
 render :: Int -> Int -> Scene -> Int -> PixelRGB8
 render w h s index = PixelRGB8 (ci cr) (ci cg) (ci cb)
@@ -36,14 +39,14 @@ render w h s index = PixelRGB8 (ci cr) (ci cg) (ci cb)
                          -- ambient lighting
                          ((ambColor . ambientLight $ s) * (materialAmbience . getMaterial $ obj))
                          -- + diffuse lighting
-                         ^+^ (foldl1 (^+^) $ (diffuse c s) <$> sceneLights s)
+                         + (foldl1 (+) $ (diffuse c s) <$> sceneLights s)
                          -- + reflections - TODO
             ray = camRay x y (sceneCamera s)
             y = fromIntegral $ index `mod` w
             x = fromIntegral $ index `div` w
             ci = floor . (clamp 0 255) . (*255)
             --wrong format:
-            --Ray (eye cam) $ rotCam x y w h (center cam ^-^ eye cam) (up cam) (fovy cam)
+            --Ray (eye cam) $ rotCam x y w h (center cam - eye cam) (up cam) (fovy cam)
             --cam = sceneCamera s
 
 diffuse :: Collision -> Scene -> Light -> V3 Float
@@ -59,7 +62,7 @@ diffuse (Collision pos n _ obj) s (Light lpos color int) =
             ill = i * dot n (normalize lightdir) *^ color * materialDiffuse mat
             mat = getMaterial obj
             blocked = raytrace (Ray pos lightdir) s
-            lightdir = (lpos ^-^ pos)
+            lightdir = (lpos - pos)
             i = case int of
                     Nothing -> 1
                     Just a -> a
@@ -79,7 +82,7 @@ raytrace r s = case possibleCollisions of
                     possibleCollisions = map fromJust $ filter isJust $ (intersect r) <$> (sceneObjects s)
 
 camRay :: Float -> Float -> Camera -> Ray
-camRay x y c = Ray (eye c) (lowerLeft c ^+^ x *^ xDir c ^+^ y *^ yDir c ^-^ eye c)
+camRay x y c = Ray (eye c) (lowerLeft c + x *^ xDir c + y *^ yDir c - eye c)
 
 rotateDegAx :: Float -> V3 Float -> V3 Float -> V3 Float
 rotateDegAx phi axis = rotate q
@@ -88,7 +91,7 @@ rotateDegAx phi axis = rotate q
 
 intersect :: Ray -> Collidable -> Maybe Collision
 intersect (Ray ro rd) s@(S (Sphere sc sr _)) = if (d > 0 && int > 0) then
-                                                Just (Collision pos (normalize $ pos ^-^ sc) int s)
+                                                Just $ Collision pos (normalize $ pos - sc) int s
                                               else
                                                 Nothing
                                 where
@@ -96,12 +99,21 @@ intersect (Ray ro rd) s@(S (Sphere sc sr _)) = if (d > 0 && int > 0) then
                                     b = 2 * dot rd oc
                                     c = dot oc oc - sr*sr
                                     d = b * b - 4 * a * c
-                                    oc = ro ^-^ sc
-                                    pos = ro ^+^ (rd ^* int)
+                                    oc = ro - sc
+                                    pos = ro + (rd ^* int)
                                     int = case ints of
                                             [] -> 0
                                             a  -> foldl1 min a
-                                    ints = filter (uncurry (&&).(&&&) (>0.00001) (not.isNaN)) [(-b-(sqrt d))/(2*a),(-b+(sqrt d))/(2*a)]
+                                    ints = filter (uncurry (&&).(&&&) (>epsilon) (not.isNaN)) [(-b-(sqrt d))/(2*a),(-b+(sqrt d))/(2*a)]
+intersect (Ray ro rd) p@(P (Plane pc pn _)) = if det == 0 || t < epsilon
+                                                          then Nothing
+                                                          else Just -- $ D.trace (show (det, t, pos)) 
+                                                                    $ Collision pos pn t p
+                            where
+                                pos = ro + t *^ rd'
+                                det = dot rd' pn
+                                t = (dot (pc - ro) pn)/det
+                                rd' = normalize rd
 intersect _ _ = undefined
 
 
