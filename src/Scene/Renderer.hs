@@ -34,7 +34,7 @@ render w h s index = PixelRGB8 (ci cr) (ci cg) (ci cb)
                   Nothing -> bgColor $ sceneBackground s
                   Just c@(Collision pos _ _ obj) ->
                          -- ambient lighting
-                         ((*) <$> (ambColor . ambientLight $ s) <*> (materialAmbience . getMaterial $ obj))
+                         ((ambColor . ambientLight $ s) * (materialAmbience . getMaterial $ obj))
                          -- + diffuse lighting
                          ^+^ (foldl1 (^+^) $ (diffuse c s) <$> sceneLights s)
                          -- + reflections - TODO
@@ -56,8 +56,7 @@ diffuse (Collision pos n _ obj) s (Light lpos color int) =
                                             else
                                                 ill
         where
-            --        angle of light               *     (color * material)
-            ill = (*) (dot n $ normalize lightdir) <$> ((*) <$> color ^* i <*> materialDiffuse mat)
+            ill = i * dot n (normalize lightdir) *^ color * materialDiffuse mat
             mat = getMaterial obj
             blocked = raytrace (Ray pos lightdir) s
             lightdir = (lpos ^-^ pos)
