@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, BangPatterns #-}
 module Main where
 
 import Codec.Picture.Png
@@ -6,8 +6,11 @@ import Codec.Picture.Types
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
 import Data.Vector hiding ((++),map, foldl, filter, foldl1)
+import Data.Functor
 import Data.Maybe
-
+import Control.Parallel.Strategies
+import Control.DeepSeq
+import System.Environment
 
 import Scene.Parser
 import Scene.Renderer
@@ -71,17 +74,22 @@ validateAndParseScene f = do
                    , sceneObjects = objects
                    }
 
+instance NFData PixelRGB8
+    where
+        rnf (PixelRGB8 r g b) = r `seq` g `seq` b `seq` ()
 
 main :: IO ()
 main = do
-    f <- B.readFile "scenes/test.sce"
-    case validateAndParseScene f of
-      Left error -> putStrLn $ "Error: " ++ error
-      Right s -> do
-        let (w,h)  = (width . sceneCamera $ s, height . sceneCamera $ s)
-            imdata = map (render w h s) [0..w*h-1]
-            imvec  = fromList imdata
-            im     = generateImage (\x y -> imvec ! (x*w+(h-y-1))) w h
-        print s
-        print (w,h)
-        writePng "out.png" im
+    args <- getArgs
+    case args of
+        [] -> putStrLn "please specify a scene to render"
+        (a:_) -> do
+            !f <- B.readFile a
+            case validateAndParseScene f of
+              Left error -> putStrLn $ "Error: " ++ error
+              Right s -> do
+                let (w,h)  = (width . sceneCamera $ s, height . sceneCamera $ s)
+                    !imdata = (render w h s <$> [0..w*h-1]) `using` parListChunk w rdeepseq
+                    imvec  = fromList imdata
+                    im     = generateImage (\x y -> imvec ! (x*w+(h-y-1))) w h
+                writePng "out.png" im

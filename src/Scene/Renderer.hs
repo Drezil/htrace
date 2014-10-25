@@ -88,7 +88,7 @@ raytrace r s = case possibleCollisions of
                     _  -> Just $ foldl1 min possibleCollisions
                where
                     possibleCollisions :: [Collision]
-                    possibleCollisions = map fromJust $ filter isJust $ (intersect r) <$> (sceneObjects s)
+                    possibleCollisions = map fromJust $ filter isJust $ (intersect r) <$> sceneObjects s
 
 camRay :: Float -> Float -> Camera -> Ray
 camRay x y c = Ray (eye c) (lowerLeft c + x *^ xDir c + y *^ yDir c - eye c)
