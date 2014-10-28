@@ -32,15 +32,8 @@ epsilon = 0.00001
 render :: Int -> Int -> Scene -> Int -> PixelRGB8
 render w h s index = PixelRGB8 (ci cr) (ci cg) (ci cb)
         where
-            (V3 cr cg cb) =
-                case raytrace ray s of
-                  Nothing -> bgColor $ sceneBackground s
-                  Just c@(Collision pos _ _ obj) ->
-                         -- ambient lighting
-                         ((ambColor . ambientLight $ s) * (materialAmbience . getMaterial $ obj))
-                         -- + diffuse/spec lighting
-                         + (foldl1 (+) $ (diffuseAndSpec c s co) <$> sceneLights s)
-                         -- + reflect -- TODO
+            (V3 cr cg cb) = getColorFromRay (sceneRecursions s) ray s
+
             ray@(Ray co _) = camRay x y (sceneCamera s)
             y = fromIntegral $ index `mod` w
             x = fromIntegral $ index `div` w
@@ -48,6 +41,26 @@ render w h s index = PixelRGB8 (ci cr) (ci cg) (ci cb)
             --wrong format:
             --Ray (eye cam) $ rotCam x y w h (center cam - eye cam) (up cam) (fovy cam)
             --cam = sceneCamera s
+
+getColorFromRay :: Int -> Ray -> Scene -> V3 Float
+getColorFromRay refLeft ray@(Ray raypos raydir) s = clamp 0 1 <$> color
+  where color =
+          case raytrace ray s of
+            Nothing -> bgColor $ sceneBackground s
+            Just c@(Collision cpos cnor _ obj) ->
+                -- ambient lighting
+                ((ambColor . ambientLight $ s) * (materialAmbience . getMaterial $ obj))
+                -- + diffuse/spec lighting
+                + (foldl1 (+) $ (diffuseAndSpec c s raypos) <$> sceneLights s)
+                -- + reflect
+                + reflection ^* (materialReflection . getMaterial $ obj)
+                where
+                    reflection = if refLeft == 0 || (materialReflection . getMaterial) obj == 0 then
+                                     V3 0 0 0
+                                 else
+                                     getColorFromRay (refLeft-1) (Ray (cpos + (cnor ^* (2 * epsilon))) refldir) s
+                                     where
+                                        refldir = normalize ((eye3 - 2 *!! outer cnor cnor) !* raydir)
 
 -- | Collision-Information, Scene, view-position, light
 diffuseAndSpec :: Collision -> Scene -> V3 Float-> Light -> V3 Float
@@ -91,7 +104,7 @@ raytrace r s = case possibleCollisions of
                     possibleCollisions = map fromJust $ filter isJust $ (intersect r) <$> sceneObjects s
 
 camRay :: Float -> Float -> Camera -> Ray
-camRay x y c = Ray (eye c) (lowerLeft c + x *^ xDir c + y *^ yDir c - eye c)
+camRay x y c = Ray (eye c) (normalize $ lowerLeft c + x *^ xDir c + y *^ yDir c - eye c)
 
 rotateDegAx :: Float -> V3 Float -> V3 Float -> V3 Float
 rotateDegAx phi axis = rotate q
