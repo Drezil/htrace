@@ -1,6 +1,7 @@
 module Scene.Types where
 
 import Linear (V3)
+import qualified Data.Vector as V
 
 type Color = V3 Float
 type Intensity = Float
@@ -20,7 +21,7 @@ data Camera = Camera
 
 type RecursionDepth = Int
 
-data Background = Background 
+data Background = Background
                 { bgColor :: Color
                 }
                 deriving (Show, Eq)
@@ -41,7 +42,7 @@ data Material = Material
             , materialReflection :: Float
             }
                 deriving (Show, Eq)
-            
+
 
 data Sphere = Sphere
             { sphereCenter   :: V3 Float
@@ -67,13 +68,26 @@ data Mesh = Mesh
             }
                 deriving (Show, Eq)
 
-data ObjectParser = OpS Sphere 
-                  | OpP Plane 
-                  | OpM Mesh 
-                  | OpC Camera 
-                  | OpL Light 
-                  | OpR RecursionDepth 
-                  | OpA Ambience 
+data BoundingBox = BoundingBox
+            { boundX         :: (Float, Float)
+            , boundY         :: (Float, Float)
+            , boundZ         :: (Float, Float)
+            }
+
+data MeshObj = MeshObj
+             { meshVertices :: V.Vector (V3 Float)
+             , meshFaces    :: V.Vector (V3 Float)
+             , meshNormals  :: V.Vector (V3 Float)
+             , meshBounds   :: BoundingBox
+             }
+
+data ObjectParser = OpS Sphere
+                  | OpP Plane
+                  | OpM Mesh
+                  | OpC Camera
+                  | OpL Light
+                  | OpR RecursionDepth
+                  | OpA Ambience
                   | OpB Background
                   deriving (Show, Eq)
 

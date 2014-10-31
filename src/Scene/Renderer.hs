@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, BangPatterns #-}
 module Scene.Renderer (render) where
 
 import Control.Applicative
@@ -29,13 +29,13 @@ instance Ord Collision where
 epsilon :: Float
 epsilon = 0.00001
 
-render :: Int -> Int -> Scene -> Int -> PixelRGB8
-render w h s index = PixelRGB8 (ci cr) (ci cg) (ci cb)
+render :: Int -> Int -> Scene -> Int -> V3 Word8
+render w h s index = V3 (ci cr) (ci cg) (ci cb)
         where
             (V3 cr cg cb) = getColorFromRay (sceneRecursions s) ray s
 
             ray@(Ray co _) = camRay x y (sceneCamera s)
-            y = fromIntegral $ index `mod` w
+            y = fromIntegral $ h - (index `mod` w) - 1
             x = fromIntegral $ index `div` w
             ci = floor . (clamp 0 255) . (*255)
             --wrong format:
@@ -53,13 +53,14 @@ getColorFromRay refLeft ray@(Ray raypos raydir) s = clamp 0 1 <$> color
                 -- + diffuse/spec lighting
                 + (foldl1 (+) $ (diffuseAndSpec c s raypos) <$> sceneLights s)
                 -- + reflect
-                + reflection ^* (materialReflection . getMaterial $ obj)
+                + reflection
                 where
-                    reflection = if refLeft == 0 || (materialReflection . getMaterial) obj == 0 then
+                    ! reflection = if refLeft == 0 || (materialReflection . getMaterial) obj == 0 then
                                      V3 0 0 0
                                  else
-                                     getColorFromRay (refLeft-1) (Ray (cpos + (cnor ^* (2 * epsilon))) refldir) s
+                                     reflcolor ^* (materialReflection . getMaterial $ obj)
                                      where
+                                        reflcolor = getColorFromRay (refLeft-1) (Ray (cpos + (cnor ^* (2 * epsilon))) refldir) s
                                         refldir = normalize ((eye3 - 2 *!! outer cnor cnor) !* raydir)
 
 -- | Collision-Information, Scene, view-position, light
@@ -73,18 +74,18 @@ diffuseAndSpec (Collision pos n _ obj) s co (Light lpos color int) =
                                             else
                                                 diff + spec
         where
-            spec = if dot n (normalize lightdir) < 0 || dot r v < 0
+            spec = if dot n ld < 0 || dot r v < 0
                     then V3 0 0 0
                     else i * (dot r v ** materialShinyness mat) *^ color * materialSpec mat
             r = (dot n ld * 2 *^ n) - ld
-            ld = normalize lightdir
+            ! ld = normalize lightdir
             v = normalize $ co - pos
-            diff = if dot n (normalize lightdir) < 0
+            diff = if dot n ld < 0
                     then V3 0 0 0
-                    else i * dot n (normalize lightdir) *^ color * materialDiffuse mat
+                    else i * dot n ld *^ color * materialDiffuse mat
             mat = getMaterial obj
-            blocked = raytrace (Ray pos lightdir) s
-            lightdir = (lpos - pos)
+            ! blocked = raytrace (Ray pos lightdir) s
+            ! lightdir = (lpos - pos)
             i = case int of
                     Nothing -> 1
                     Just a -> a
@@ -120,7 +121,7 @@ intersect (Ray ro rd) s@(S (Sphere sc sr _)) = if (d > 0 && int > 0) then
                                     a = dot rd rd
                                     b = 2 * dot rd oc
                                     c = dot oc oc - sr*sr
-                                    d = b * b - 4 * a * c
+                                    ! d = b * b - 4 * a * c
                                     oc = ro - sc
                                     pos = ro + (rd ^* int)
                                     int = case ints of
@@ -132,7 +133,7 @@ intersect (Ray ro rd) p@(P (Plane pc pn _)) = if det == 0 || t < epsilon
                                                           else Just $ Collision pos pn t p
                             where
                                 pos = ro + t *^ rd'
-                                det = dot rd' pn
+                                ! det = dot rd' pn
                                 t = (dot (pc - ro) pn)/det
                                 rd' = normalize rd
 intersect _ _ = undefined

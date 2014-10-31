@@ -5,7 +5,9 @@ import Codec.Picture.Png
 import Codec.Picture.Types
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
-import Data.Vector hiding ((++),map, foldl, filter, foldl1)
+import Data.Vector.Storable hiding ((++),map, foldl, filter, foldl1)
+import Linear (V3(..))
+import Data.Word (Word8)
 import Data.Functor
 import Data.Maybe
 import Control.Parallel.Strategies
@@ -84,12 +86,18 @@ main = do
     case args of
         [] -> putStrLn "please specify a scene to render"
         (a:_) -> do
+            putStrLn $ "reading and parsing "++ show a
             !f <- B.readFile a
             case validateAndParseScene f of
               Left error -> putStrLn $ "Error: " ++ error
               Right s -> do
+                putStrLn "redering..."
                 let (w,h)  = (width . sceneCamera $ s, height . sceneCamera $ s)
-                    !imdata = (render w h s <$> [0..w*h-1]) `using` parListChunk w rdeepseq
-                    imvec  = fromList imdata
-                    im     = generateImage (\x y -> imvec ! (x*w+(h-y-1))) w h
+                    imvec = fromList ((render w h s <$> [0..w*h-1]) `using` parListChunk w rseq)
+                    im     = generateImage (v3ToPixel w imvec) w h
                 writePng "out.png" im
+
+v3ToPixel :: Int -> Vector (V3 Word8) -> Int -> Int -> PixelRGB8
+v3ToPixel w vec x y = PixelRGB8 r g b
+            where
+                V3 r g b = vec ! (x*w+y)
