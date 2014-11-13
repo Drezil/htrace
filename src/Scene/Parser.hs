@@ -40,9 +40,9 @@ parseScene s = parseOnly (many parseObject) (preprocess s)
 
 parseObject :: Parser ObjectParser
 parseObject = do
-        t    <- string "camera" <|> 
-                string "depth" <|> 
-                string "background" <|> 
+        t    <- string "camera" <|>
+                string "depth" <|>
+                string "background" <|>
                 string "ambience" <|>
                 string "light" <|>
                 string "sphere" <|>
@@ -68,13 +68,14 @@ parseObject = do
                         skipSpace
                         c <- parseVector
                         intensity <- double <|> return 0
-                        i <- return $ if intensity == 0 
-                                         then Nothing 
+                        i <- return $ if intensity == 0
+                                         then Nothing
                                          else Just (fromRational . toRational $ intensity)
                         endOfLine
                         return $ OpL (Light p c i)
             "sphere" -> parseSphere
             "plane"  -> parsePlane
+            "mesh"   -> parseMesh
             _ -> undefined
 
 parseCamera :: Parser ObjectParser
@@ -111,8 +112,6 @@ parseCamera = do
                         , xDir = xDir'
                         , yDir = yDir'
                         }
-                        where
-                            
 
 parsePlane :: Parser ObjectParser
 parsePlane = do
@@ -167,3 +166,20 @@ parseVector = do
         return $ V3 (f a) (f b) (f c)
             where
               f = fromRational . toRational --convert Double to Float
+
+parseMesh :: Parser ObjectParser
+parseMesh = do
+        name <- takeTill isSpace
+        skipSpace
+        shading <- string "FLAT" <|> string "PHONG"
+        skipSpace
+        mat <- parseMaterial
+        let shading' = case shading of
+                    "FLAT"  = Flat
+                    "PHONG" = Phong
+        return $ OpM Mesh
+                      { meshFilename = name
+                      , meshShading  = shading'
+                      , material     = mat
+                      }
+
