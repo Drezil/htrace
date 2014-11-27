@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Scene.Parser (parseScene) where
+module Scene.Parser (parseScene, parseMesh) where
 
 import Control.Applicative
 import Data.Attoparsec.ByteString.Char8
@@ -75,7 +75,7 @@ parseObject = do
                         return $ OpL (Light p c i)
             "sphere" -> parseSphere
             "plane"  -> parsePlane
-            "mesh"   -> parseMesh
+            "mesh"   -> parseRawMesh
             _ -> undefined
 
 parseCamera :: Parser ObjectParser
@@ -167,19 +167,24 @@ parseVector = do
             where
               f = fromRational . toRational --convert Double to Float
 
-parseMesh :: Parser ObjectParser
-parseMesh = do
+parseRawMesh :: Parser ObjectParser
+parseRawMesh = do
         name <- takeTill isSpace
         skipSpace
         shading <- string "FLAT" <|> string "PHONG"
         skipSpace
         mat <- parseMaterial
         let shading' = case shading of
-                    "FLAT"  = Flat
-                    "PHONG" = Phong
-        return $ OpM Mesh
-                      { meshFilename = name
-                      , meshShading  = shading'
-                      , material     = mat
+                        "FLAT"  -> Flat
+                        "PHONG" -> Phong
+        return $ OpM UIMesh
+                      { uimeshFilename = name
+                      , uimeshShading  = shading'
+                      , uimaterial     = mat
                       }
 
+parseMesh :: Shading -> Material -> ByteString -> Either String ObjectParser
+parseMesh s m f = parseOnly (parseMesh' s m) (preprocess f)
+
+parseMesh' :: Shading -> Material -> Parser ObjectParser
+parseMesh' s m = undefined

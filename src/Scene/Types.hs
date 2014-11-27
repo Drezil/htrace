@@ -1,7 +1,9 @@
 module Scene.Types where
 
 import Linear (V3)
+import Data.IntMap
 import qualified Data.Vector as V
+import Data.ByteString
 
 type Color = V3 Float
 type Intensity = Float
@@ -61,29 +63,35 @@ data Plane = Plane
 data Shading = Flat | Phong
                 deriving (Show, Eq)
 
-data Mesh = Mesh
-            { meshFilename :: String
-            , meshShading  :: Shading
-            , material     :: Material
+data UIMesh = UIMesh
+            { uimeshFilename :: ByteString
+            , uimeshShading  :: Shading
+            , uimaterial     :: Material
             }
                 deriving (Show, Eq)
+
+data Mesh = Mesh
+            { meshShading     :: Shading
+            , meshMaterial    :: Material
+            , meshVertices    :: IntMap (V3 Float)
+            , meshFaces       :: IntMap (V3 Int)
+            , meshNormals     :: IntMap (V3 Float)
+            , meshFaceNormals :: IntMap (V3 Float)
+            , meshBounds      :: BoundingBox
+            }
+            deriving (Show, Eq)
 
 data BoundingBox = BoundingBox
             { boundX         :: (Float, Float)
             , boundY         :: (Float, Float)
             , boundZ         :: (Float, Float)
             }
-
-data MeshObj = MeshObj
-             { meshVertices :: V.Vector (V3 Float)
-             , meshFaces    :: V.Vector (V3 Float)
-             , meshNormals  :: V.Vector (V3 Float)
-             , meshBounds   :: BoundingBox
-             }
+            deriving (Show, Eq)
 
 data ObjectParser = OpS Sphere
                   | OpP Plane
-                  | OpM Mesh
+                  | OpM UIMesh
+                  | OpI Mesh
                   | OpC Camera
                   | OpL Light
                   | OpR RecursionDepth
@@ -109,4 +117,4 @@ data Scene = Scene
 getMaterial :: Collidable -> Material
 getMaterial (S (Sphere _ _ m)) = m
 getMaterial (P (Plane _ _ m)) = m
-getMaterial (M (Mesh _ _ m)) = m
+getMaterial (M (Mesh _ m _ _ _ _ _)) = m

@@ -63,7 +63,11 @@ executable raytrace
                        JuicyPixels >= 3.1,
                        parallel >= 3.2,
                        vector >= 0.10,
-                       deepseq >= 1.3
+                       deepseq >= 1.3,
+                       either >= 4.3,
+                       containers >= 0.2,
+                       mtl >= 2.1,
+                       filepath >= 1.3
   
   -- Directories containing source files.
   hs-source-dirs:      src

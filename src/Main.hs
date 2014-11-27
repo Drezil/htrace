@@ -10,9 +10,13 @@ import Linear (V3(..))
 import Data.Word (Word8)
 import Data.Functor
 import Data.Maybe
+import Data.Traversable
 import Control.Parallel.Strategies
+import Control.Monad.Trans
+import Control.Monad.Trans.Either
 import Control.DeepSeq
 import System.Environment
+import System.FilePath.Posix
 
 import Scene.Parser
 import Scene.Renderer
@@ -54,19 +58,20 @@ filterObjects :: [ObjectParser] -> [Collidable]
 filterObjects []     = []
 filterObjects (a:as) = case a of
                       OpS s -> S s:filterObjects as
-                      OpM m -> M m:filterObjects as
+                      OpI m -> M m:filterObjects as
                       OpP p -> P p:filterObjects as
                       _ -> filterObjects as
 
-validateAndParseScene :: B8.ByteString -> Either String Scene
-validateAndParseScene f = do
-            obs <- parseScene f
-            cam <- findCamera obs
-            depth <- findDepth obs
-            amb <- findAmbience obs
-            back <- findBackground obs
-            lights <- return $ filterLights obs
-            objects <- return $ filterObjects obs
+validateAndParseScene :: B8.ByteString -> FilePath -> EitherT String IO Scene
+validateAndParseScene f p = do
+            obs <- hoistEither $ parseScene f
+            obs' <- initializeMeshes p obs
+            cam <- hoistEither $ findCamera obs'
+            depth <- hoistEither $ findDepth obs'
+            amb <- hoistEither $ findAmbience obs'
+            back <- hoistEither $ findBackground obs'
+            lights <- return $ filterLights obs'
+            objects <- return $ filterObjects obs'
             return $ Scene
                    { ambientLight = amb
                    , sceneCamera = cam
@@ -75,6 +80,19 @@ validateAndParseScene f = do
                    , sceneLights = lights
                    , sceneObjects = objects
                    }
+
+initializeMeshes :: FilePath -> [ObjectParser] -> EitherT String IO [ObjectParser]
+initializeMeshes p = traverse (initializeMeshes' p)
+            where
+                initializeMeshes' :: FilePath -> ObjectParser -> EitherT String IO ObjectParser
+                initializeMeshes' p (OpM (UIMesh f s m)) = 
+                                            let filename = p </> (B8.unpack f) in
+                                            do
+                                            d <- lift $ B.readFile filename
+                                            mesh <- hoistEither $ parseMesh s m d
+                                            return mesh
+                initializeMeshes' _ a = return a
+                    
 
 instance NFData PixelRGB8
     where
@@ -88,7 +106,8 @@ main = do
         (a:_) -> do
             putStrLn $ "reading and parsing "++ show a
             !f <- B.readFile a
-            case validateAndParseScene f of
+            r <- runEitherT $ validateAndParseScene f (dropFileName a)
+            case r of
               Left error -> putStrLn $ "Error: " ++ error
               Right s -> do
                 putStrLn "redering..."
