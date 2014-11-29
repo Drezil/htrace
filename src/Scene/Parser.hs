@@ -2,15 +2,19 @@
 module Scene.Parser (parseScene, parseMesh) where
 
 import Control.Applicative
-import Data.Attoparsec.ByteString.Char8
+import Data.Attoparsec.ByteString.Char8 as A8
 import Data.Functor
+import Data.IntMap as IM
+import Data.IntSet
+import qualified Data.Foldable as F
 import Data.ByteString as B
 import Data.ByteString.Char8 as B8
 import Linear
+import Prelude as P
 
 import Scene.Types
 
-import Debug.Trace
+import Debug.Trace as D
 
 partitionEithers :: [Either a b] -> ([a],[b])
 partitionEithers e = go e ([],[])
@@ -169,6 +173,7 @@ parseVector = do
 
 parseRawMesh :: Parser ObjectParser
 parseRawMesh = do
+        skipSpace
         name <- takeTill isSpace
         skipSpace
         shading <- string "FLAT" <|> string "PHONG"
@@ -187,4 +192,63 @@ parseMesh :: Shading -> Material -> ByteString -> Either String ObjectParser
 parseMesh s m f = parseOnly (parseMesh' s m) (preprocess f)
 
 parseMesh' :: Shading -> Material -> Parser ObjectParser
-parseMesh' s m = undefined
+parseMesh' s m = do
+            string "OFF"
+            skipSpace
+            D.trace "first Line" endOfLine
+            v <- decimal
+            skipSpace
+            f <- decimal
+            skipSpace
+            _ <- decimal --ignored in our OFF-Files
+            D.trace "second Line" endOfLine
+            verts <- D.trace "verts" $ A8.count v parseVector
+            faces <- D.trace "faces" $ A8.count f parseTriangle
+            -- whatever should be parsed afterwards in OFF..
+            let
+                mv = IM.fromList $ P.zip [1..] verts
+                mf = IM.fromList $ P.zip [1..] faces
+                mfn = normal mv <$> mf
+                normal :: IntMap (V3 Float) -> V3 Int -> V3 Float
+                normal verts (V3 v1 v2 v3) = normalize $ cross (verts ! v1 - verts ! v2)
+                                                               (verts ! v3 - verts ! v2)
+                                                                -- maybe * (-1)
+                mn = IM.fromList $ P.zip [1..] $ vnormal mfn mf <$> [1..v]
+                vnormal :: IntMap (V3 Float) -> IntMap (V3 Int) -> Int -> V3 Float
+                vnormal norms faces i = normalize $ F.foldl' (+) (V3 0 0 0) $ (!) norms <$> fs
+                                        --TODO: weight sum with opening-angle!
+                            where
+                                fs = keys $ IM.filter (\(V3 a b c) -> P.any (==i) [a,b,c]) faces
+                bounds = f b
+                       where
+                          f ((V3 a b c),(V3 x y z)) = BoundingBox
+                                                      { boundX = (a,x)
+                                                      , boundY = (b,y)
+                                                      , boundZ = (c,z)
+                                                      }
+                          b = F.foldl' minmax (V3 (-infty) (-infty) (-infty), V3 infty infty infty) mv
+                          minmax (maxin,minin) vec = (max <$> maxin <*> vec, min <$> minin <*> vec)
+                          infty = 9999999999999 :: Float
+                                
+            return $ OpI Mesh 
+                        { meshShading     = s
+                        , meshMaterial    = m
+                        , meshVertices    = mv
+                        , meshFaces       = mf
+                        , meshNormals     = mn
+                        , meshFaceNormals = mfn
+                        , meshBounds      = bounds
+                        }
+
+parseTriangle :: Parser (V3 Int)
+parseTriangle = do
+        _ <- string "3 "
+        a <- decimal
+        skipSpace
+        b <- decimal
+        skipSpace
+        c <- decimal
+        skipSpace
+        endOfLine
+        return $ V3 a b c
+
