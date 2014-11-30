@@ -136,7 +136,7 @@ intersect (Ray ro rd) p@(P (Plane pc pn _)) = if det == 0 || t < epsilon
                                 ! det = dot rd' pn
                                 t = (dot (pc - ro) pn)/det
                                 rd' = normalize rd
-intersect _ _ = undefined
+intersect _ _ = error "intersection with unknown object"
 
 
 -- deprecated - wrong calculation of rays.

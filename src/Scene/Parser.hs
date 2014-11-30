@@ -195,25 +195,25 @@ parseMesh' :: Shading -> Material -> Parser ObjectParser
 parseMesh' s m = do
             string "OFF"
             skipSpace
-            D.trace "first Line" endOfLine
+            --D.trace "first Line" endOfLine
             v <- decimal
             skipSpace
             f <- decimal
             skipSpace
             _ <- decimal --ignored in our OFF-Files
             D.trace "second Line" endOfLine
-            verts <- D.trace "verts" $ A8.count v parseVector
-            faces <- D.trace "faces" $ A8.count f parseTriangle
+            verts <- D.trace (show v ++ " verts") $ A8.count v parseVector
+            faces <- D.trace (show f ++ " faces") $ A8.count f parseTriangle
             -- whatever should be parsed afterwards in OFF..
             let
-                mv = IM.fromList $ P.zip [1..] verts
-                mf = IM.fromList $ P.zip [1..] faces
+                mv = IM.fromList $ P.zip [0..] verts
+                mf = IM.fromList $ P.zip [0..] faces
                 mfn = normal mv <$> mf
                 normal :: IntMap (V3 Float) -> V3 Int -> V3 Float
                 normal verts (V3 v1 v2 v3) = normalize $ cross (verts ! v1 - verts ! v2)
                                                                (verts ! v3 - verts ! v2)
                                                                 -- maybe * (-1)
-                mn = IM.fromList $ P.zip [1..] $ vnormal mfn mf <$> [1..v]
+                mn = IM.fromList $ P.zip [0..] $ vnormal mfn mf <$> [0..v]
                 vnormal :: IntMap (V3 Float) -> IntMap (V3 Int) -> Int -> V3 Float
                 vnormal norms faces i = normalize $ F.foldl' (+) (V3 0 0 0) $ (!) norms <$> fs
                                         --TODO: weight sum with opening-angle!
@@ -242,13 +242,13 @@ parseMesh' s m = do
 
 parseTriangle :: Parser (V3 Int)
 parseTriangle = do
-        _ <- string "3 "
+        skipSpace
+        _ <- string "3"
+        skipSpace
         a <- decimal
         skipSpace
         b <- decimal
         skipSpace
         c <- decimal
-        skipSpace
-        endOfLine
         return $ V3 a b c
 

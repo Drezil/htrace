@@ -65,7 +65,6 @@ filterObjects (a:as) = case a of
 validateAndParseScene :: B8.ByteString -> FilePath -> EitherT String IO Scene
 validateAndParseScene f p = do
             obs <- hoistEither $ parseScene f
-            lift $ print obs
             obs' <- initializeMeshes p obs
             cam <- hoistEither $ findCamera obs'
             depth <- hoistEither $ findDepth obs'
@@ -108,7 +107,6 @@ main = do
             putStrLn $ "reading and parsing "++ show a
             !f <- B.readFile a
             r <- runEitherT $ validateAndParseScene f (dropFileName a)
-            print r
             case r of
               Left error -> putStrLn $ "Error: " ++ error
               Right s -> do
