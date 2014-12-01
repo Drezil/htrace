@@ -209,8 +209,8 @@ parseMesh' s m = do
                 mf = IM.fromList $ P.zip [0..] faces
                 mfn = normal mv <$> mf
                 normal :: IntMap (V3 Float) -> V3 Int -> V3 Float
-                normal verts (V3 v1 v2 v3) = (*(-1)).normalize $ cross (verts ! v1 - verts ! v2)
-                                                               (verts ! v3 - verts ! v2)
+                normal verts (V3 v1 v2 v3) = normalize $ cross (verts ! v2 - verts ! v1)
+                                                               (verts ! v3 - verts ! v1)
                                                                 -- maybe * (-1)
                 mn = IM.fromList $ P.zip [0..] $ vnormal mfn mf <$> [0..v]
                 vnormal :: IntMap (V3 Float) -> IntMap (V3 Int) -> Int -> V3 Float

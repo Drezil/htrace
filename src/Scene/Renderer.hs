@@ -156,18 +156,16 @@ intersect (Ray ro rd) m@(M (Mesh s _ v f n fn b)) = case catMaybes . elems $ pos
                                     where
                                         ! det = dot rd' (norm IM.! f) --do we hit the plane
                                         rd' = normalize rd
-                                        t = (dot ((verts IM.! w2) - ro) (norm IM.! f))/det --when do we hit the plane
-                                        pos = ro + t *^ rd'                   --where do we hit the plane
-                                        v1 = (verts IM.! w1) - (verts IM.! w2)
-                                        v2 = (verts IM.! w3) - (verts IM.! w2)
-                                        det2v = V3 (normalize v1) (normalize v2) (norm IM.! f) !* (pos - (verts IM.! w2))
-                                        --det2v = case D.trace (show $ det2m !* (pos - (verts IM.! w2))) (inv33 det2m) of
-                                        --    Nothing -> V3 1 1 1
-                                        --    Just m -> m !* (pos - (verts IM.! w2))
+                                        t = (dot ((verts IM.! w1) - ro) (norm IM.! f))/det --when do we hit the plane
+                                        pos = ro + t *^ rd'                                --where do we hit the plane
+                                        v1 = (verts IM.! w2) - (verts IM.! w1)
+                                        v2 = (verts IM.! w3) - (verts IM.! w1)
+                                        det2m = V3 (normalize v1) (normalize v2) (norm IM.! f) -- !* (pos - (verts IM.! w2))
+                                        det2v = det2m !* (pos - (verts IM.! w1))
                                         -- fromJust is justified as we only make a base-change and all 3
                                         -- vectors are linear independent.
                                         det2 =     det2v ^. _x > 0 && det2v ^. _y > 0
-                                                && det2v ^. _x + det2v ^. _y < 1
+                                                && det2v ^. _x < 1 && det2v ^. _y < 1
 
                                 --hitsPhong :: IntMap (V3 Float) -> IntMap (V3 Float) -> V3 Int -> Maybe Collision
 
