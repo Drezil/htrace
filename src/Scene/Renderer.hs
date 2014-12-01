@@ -11,6 +11,10 @@ import Data.Vector hiding ((++),map, foldl, filter, foldl1)
 import Data.Word (Word8)
 import Data.Maybe
 import Linear
+import Control.Lens.Operators
+import Data.IntMap as IM
+import Prelude as P
+import qualified Data.List as L
 
 import Scene.Parser
 import Scene.Types
@@ -102,7 +106,7 @@ raytrace r s = case possibleCollisions of
                     _  -> Just $ foldl1 min possibleCollisions
                where
                     possibleCollisions :: [Collision]
-                    possibleCollisions = map fromJust $ filter isJust $ (intersect r) <$> sceneObjects s
+                    possibleCollisions = P.map fromJust $ P.filter isJust $ (intersect r) <$> sceneObjects s
 
 camRay :: Float -> Float -> Camera -> Ray
 camRay x y c = Ray (eye c) (normalize $ lowerLeft c + x *^ xDir c + y *^ yDir c - eye c)
@@ -126,8 +130,8 @@ intersect (Ray ro rd) s@(S (Sphere sc sr _)) = if (d > 0 && int > 0) then
                                     pos = ro + (rd ^* int)
                                     int = case ints of
                                             [] -> 0
-                                            a  -> foldl1 min a
-                                    ints = filter (uncurry (&&).(&&&) (>epsilon) (not.isNaN)) [(-b-(sqrt d))/(2*a),(-b+(sqrt d))/(2*a)]
+                                            a  -> P.foldl1 min a
+                                    ints = P.filter (uncurry (&&).(&&&) (>epsilon) (not.isNaN)) [(-b-(sqrt d))/(2*a),(-b+(sqrt d))/(2*a)]
 intersect (Ray ro rd) p@(P (Plane pc pn _)) = if det == 0 || t < epsilon
                                                           then Nothing
                                                           else Just $ Collision pos pn t p
@@ -136,8 +140,36 @@ intersect (Ray ro rd) p@(P (Plane pc pn _)) = if det == 0 || t < epsilon
                                 ! det = dot rd' pn
                                 t = (dot (pc - ro) pn)/det
                                 rd' = normalize rd
-intersect _ _ = error "intersection with unknown object"
+intersect (Ray ro rd) m@(M (Mesh s _ v f n fn b)) = case catMaybes . elems $ possHits of
+                                [] -> Nothing
+                                a  -> Just . P.head . L.sort $ a
+                            where
+                                possHits = case s of
+                                        Flat -> hitsFlat v fn `IM.mapWithKey` f
+                                        --Phong -> hitsPhong v n <$> f
+                                        _ -> undefined
+                                hitsFlat :: IntMap (V3 Float) -> IntMap (V3 Float) -> Int -> V3 Int -> Maybe Collision
+                                hitsFlat verts norm f (V3 w1 w2 w3) =
+                                    if det == 0 || t < epsilon || not det2
+                                            then Nothing
+                                            else Just $ Collision pos (norm IM.! f) t m
+                                    where
+                                        ! det = dot rd' (norm IM.! f) --do we hit the plane
+                                        rd' = normalize rd
+                                        t = (dot ((verts IM.! w2) - ro) (norm IM.! f))/det --when do we hit the plane
+                                        pos = ro + t *^ rd'                   --where do we hit the plane
+                                        v1 = (verts IM.! w1) - (verts IM.! w2)
+                                        v2 = (verts IM.! w3) - (verts IM.! w2)
+                                        det2v = V3 (normalize v1) (normalize v2) (norm IM.! f) !* (pos - (verts IM.! w2))
+                                        --det2v = case D.trace (show $ det2m !* (pos - (verts IM.! w2))) (inv33 det2m) of
+                                        --    Nothing -> V3 1 1 1
+                                        --    Just m -> m !* (pos - (verts IM.! w2))
+                                        -- fromJust is justified as we only make a base-change and all 3
+                                        -- vectors are linear independent.
+                                        det2 =     det2v ^. _x > 0 && det2v ^. _y > 0
+                                                && det2v ^. _x + det2v ^. _y < 1
 
+                                --hitsPhong :: IntMap (V3 Float) -> IntMap (V3 Float) -> V3 Int -> Maybe Collision
 
 -- deprecated - wrong calculation of rays.
 rotCam :: Float -> Float -> Int -> Int -> V3 Float -> V3 Float -> Float -> V3 Float

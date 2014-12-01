@@ -195,13 +195,12 @@ parseMesh' :: Shading -> Material -> Parser ObjectParser
 parseMesh' s m = do
             string "OFF"
             skipSpace
-            --D.trace "first Line" endOfLine
             v <- decimal
             skipSpace
             f <- decimal
             skipSpace
             _ <- decimal --ignored in our OFF-Files
-            D.trace "second Line" endOfLine
+            skipSpace
             verts <- D.trace (show v ++ " verts") $ A8.count v parseVector
             faces <- D.trace (show f ++ " faces") $ A8.count f parseTriangle
             -- whatever should be parsed afterwards in OFF..
@@ -210,7 +209,7 @@ parseMesh' s m = do
                 mf = IM.fromList $ P.zip [0..] faces
                 mfn = normal mv <$> mf
                 normal :: IntMap (V3 Float) -> V3 Int -> V3 Float
-                normal verts (V3 v1 v2 v3) = normalize $ cross (verts ! v1 - verts ! v2)
+                normal verts (V3 v1 v2 v3) = (*(-1)).normalize $ cross (verts ! v1 - verts ! v2)
                                                                (verts ! v3 - verts ! v2)
                                                                 -- maybe * (-1)
                 mn = IM.fromList $ P.zip [0..] $ vnormal mfn mf <$> [0..v]
@@ -229,8 +228,7 @@ parseMesh' s m = do
                           b = F.foldl' minmax (V3 (-infty) (-infty) (-infty), V3 infty infty infty) mv
                           minmax (maxin,minin) vec = (max <$> maxin <*> vec, min <$> minin <*> vec)
                           infty = 9999999999999 :: Float
-                                
-            return $ OpI Mesh 
+            return $ OpI Mesh
                         { meshShading     = s
                         , meshMaterial    = m
                         , meshVertices    = mv
