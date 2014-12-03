@@ -57,25 +57,29 @@ parseObject = do
             "depth" -> do
                         skipSpace
                         d <- decimal
-                        endOfLine
+                        skipSpace
                         return $ OpR d
             "background" -> do
+                        skipSpace
                         c <- parseVector
-                        endOfLine
+                        skipSpace
                         return $ OpB (Background c)
             "ambience" -> do
+                        skipSpace
                         c <- parseVector
-                        endOfLine
+                        skipSpace
                         return $ OpA (Ambience c)
             "light" -> do
+                        skipSpace
                         p <- parseVector
                         skipSpace
                         c <- parseVector
+                        skipSpace
                         intensity <- double <|> return 0
+                        skipSpace
                         i <- return $ if intensity == 0
                                          then Nothing
                                          else Just (fromRational . toRational $ intensity)
-                        endOfLine
                         return $ OpL (Light p c i)
             "sphere" -> parseSphere
             "plane"  -> parsePlane
@@ -84,6 +88,7 @@ parseObject = do
 
 parseCamera :: Parser ObjectParser
 parseCamera = do
+        skipSpace
         eye'      <- parseVector
         center'   <- parseVector
         up'       <- parseVector
@@ -93,7 +98,7 @@ parseCamera = do
         width'    <- decimal
         skipSpace
         height'   <- decimal
-        endOfLine
+        skipSpace
         let     xDir' = (normalize $ cross (center' ^-^ eye') up') ^* (im_width / w)
                 yDir' = (normalize $ cross xDir' view) ^* (im_height / h)
                 lowerLeft' = center' ^-^ (0.5 * w *^ xDir')
@@ -122,7 +127,6 @@ parsePlane = do
         c <- parseVector
         n <- parseVector
         m <- parseMaterial
-        endOfLine
         return $ OpP Plane
                { planeCenter = c
                , planeNormal = normalize n
@@ -135,7 +139,6 @@ parseSphere = do
         skipSpace
         r <- double
         m <- parseMaterial
-        endOfLine
         return $ OpS Sphere
                { sphereCenter = p
                , sphereRadius = (fromRational . toRational) r
@@ -179,6 +182,7 @@ parseRawMesh = do
         shading <- string "FLAT" <|> string "PHONG"
         skipSpace
         mat <- parseMaterial
+        skipSpace
         let shading' = case shading of
                         "FLAT"  -> Flat
                         "PHONG" -> Phong
@@ -207,11 +211,11 @@ parseMesh' s m = do
             let
                 ! mv = IM.fromList $ P.zip [0..] verts
                 ! mf = IM.fromList $ P.zip [0..] faces
-                mfn = normal mv <$> mf
+                ! mfn = normal mv <$> mf
                 normal :: IntMap (V3 Float) -> V3 Int -> V3 Float
                 normal verts (V3 v1 v2 v3) = normalize $ cross (verts ! v2 - verts ! v1)
                                                                (verts ! v3 - verts ! v1)
-                mn = IM.fromList $ P.zip [0..] $ vnormal mfn mf <$> [0..v]
+                ! mn = IM.fromList $ P.zip [0..] $ vnormal mfn mf <$> [0..v]
                 vnormal :: IntMap (V3 Float) -> IntMap (V3 Int) -> Int -> V3 Float
                 vnormal norms faces i = normalize $ F.foldl' (+) (V3 0 0 0) $ (!) norms <$> fs
                                         --TODO: weight sum with opening-angle!

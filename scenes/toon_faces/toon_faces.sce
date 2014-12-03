@@ -14,7 +14,7 @@ ambience   0.2 0.2 0.2
 light 5 20 0 1.0 1.0 1.0 25
 
 # meshes: filename, shading, material (ambient, diffuse, specular, shininess)
-mesh neutral.off   PHONG  0.2 0.2 0.2  0.9 0.9 0.4  1.0 1.0 1.0  30.0    0.0
+mesh neutral.off   FLAT  0.2 0.2 0.2  0.9 0.9 0.4  1.0 1.0 1.0  30.0    0.0
 mesh sad.off PHONG  0.2 0.2 0.2  0.9 0.5 0.1  1.0 1.0 1.0  30.0    0.0
 mesh confused.off PHONG  0.2 0.2 0.2  0.9 0.2 0.2  1.0 1.0 1.0  30.0    0.0
 mesh smile.off PHONG  0.2 0.2 0.2  0.2 0.2 0.7  1.0 1.0 1.0  30.0    0.0

@@ -92,7 +92,7 @@ diffuseAndSpec (Collision pos n _ obj) s co (Light lpos color int) =
             ! lightdir = (lpos - pos)
             i = case int of
                     Nothing -> 1
-                    Just a -> a
+                    Just a -> 1 --a TODO: What is light-intensity and how does it relate to lighting?
 
 clamp :: Ord a => a -> a -> a -> a
 clamp min max x
@@ -140,14 +140,36 @@ intersect (Ray ro rd) p@(P (Plane pc pn _)) = if det == 0 || t < epsilon
                     ! det = dot rd' pn
                     t = (dot (pc - ro) pn)/det
                     rd' = normalize rd
-intersect (Ray ro rd) m@(M (Mesh s _ v f vn fn b)) = case catMaybes . elems $ possHits of
+intersect r@(Ray ro rd) m@(M (Mesh s _ v f vn fn b)) = case catMaybes . elems $ possHits of
                                 [] -> Nothing
                                 a  -> Just . P.head . L.sort $ a
                 where
-                    possHits = case s of
+                    possHits = if inBounds b r then case s of
                         Flat -> hitsFlat v fn `IM.mapWithKey` f
-                        --Phong -> hitsPhong v n <$> f
-                        _ -> undefined
+                        Phong -> IM.fromList [] --hitsPhong v n <$> f
+                        else
+                            IM.fromList []
+                    inBounds :: BoundingBox -> Ray -> Bool
+                    inBounds bound r = a < b
+                        where
+                           (a,b) = L.foldl' (\(a,b) (c,d) -> (min a c, max b d)) (0,infty)
+                                   [ intersectBounds (boundX bound) r (V3 1 0 0)
+                                   , intersectBounds (boundY bound) r (V3 0 1 0)
+                                   , intersectBounds (boundZ bound) r (V3 0 0 1)]
+                    intersectBounds :: (Float, Float) -> Ray -> V3 Float -> (Float,Float)
+                    intersectBounds (min, max) (Ray ro rd) n = 
+                        if det == 0 || tmin < epsilon
+                            then if tmax < epsilon
+                                 then (0,infty)
+                                 else (tmin, tmax)
+                            else (tmin, tmax)
+                        where
+                            ! det = dot rd' n
+                            rd' = normalize rd
+                            tmin = (dot ((min *^ n) - ro) n)/det
+                            tmax = (dot ((max *^ n) - ro) n)/det
+
+                    infty = 999999999999999999
                     hitsFlat :: IntMap (V3 Float) -> IntMap (V3 Float) -> Int -> V3 Int -> Maybe Collision
                     hitsFlat verts norm f (V3 w1 w2 w3) =
                         if det == 0 || t < epsilon || not det2

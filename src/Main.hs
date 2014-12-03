@@ -108,6 +108,7 @@ main = do
             putStrLn $ "reading and parsing "++ show a
             !f <- B.readFile a
             r <- runEitherT $ validateAndParseScene f (dropFileName a)
+            print r
             case r of
               Left error -> putStrLn $ "Error: " ++ error
               Right s -> do

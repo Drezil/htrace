@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 module Scene.Types where
 
 import Linear (V3)
@@ -71,13 +72,13 @@ data UIMesh = UIMesh
                 deriving (Show, Eq)
 
 data Mesh = Mesh
-            { meshShading     :: Shading
-            , meshMaterial    :: Material
+            { meshShading     :: ! Shading
+            , meshMaterial    :: ! Material
             , meshVertices    :: IntMap (V3 Float)
             , meshFaces       :: IntMap (V3 Int)
             , meshNormals     :: IntMap (V3 Float)
             , meshFaceNormals :: IntMap (V3 Float)
-            , meshBounds      :: BoundingBox
+            , meshBounds      :: ! BoundingBox
             }
             deriving (Show, Eq)
 
