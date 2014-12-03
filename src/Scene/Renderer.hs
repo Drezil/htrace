@@ -121,53 +121,52 @@ intersect (Ray ro rd) s@(S (Sphere sc sr _)) = if (d > 0 && int > 0) then
                                                 Just $ Collision pos (normalize $ pos - sc) int s
                                               else
                                                 Nothing
-                                where
-                                    a = dot rd rd
-                                    b = 2 * dot rd oc
-                                    c = dot oc oc - sr*sr
-                                    ! d = b * b - 4 * a * c
-                                    oc = ro - sc
-                                    pos = ro + (rd ^* int)
-                                    int = case ints of
-                                            [] -> 0
-                                            a  -> P.foldl1 min a
-                                    ints = P.filter (uncurry (&&).(&&&) (>epsilon) (not.isNaN)) [(-b-(sqrt d))/(2*a),(-b+(sqrt d))/(2*a)]
+                where
+                    a = dot rd rd
+                    b = 2 * dot rd oc
+                    c = dot oc oc - sr*sr
+                    ! d = b * b - 4 * a * c
+                    oc = ro - sc
+                    pos = ro + (rd ^* int)
+                    int = case ints of
+                        [] -> 0
+                        a  -> P.foldl1 min a
+                    ints = P.filter (uncurry (&&).(&&&) (>epsilon) (not.isNaN)) [(-b-(sqrt d))/(2*a),(-b+(sqrt d))/(2*a)]
 intersect (Ray ro rd) p@(P (Plane pc pn _)) = if det == 0 || t < epsilon
                                                           then Nothing
                                                           else Just $ Collision pos pn t p
-                            where
-                                pos = ro + t *^ rd'
-                                ! det = dot rd' pn
-                                t = (dot (pc - ro) pn)/det
-                                rd' = normalize rd
-intersect (Ray ro rd) m@(M (Mesh s _ v f n fn b)) = case catMaybes . elems $ possHits of
+                where
+                    pos = ro + t *^ rd'
+                    ! det = dot rd' pn
+                    t = (dot (pc - ro) pn)/det
+                    rd' = normalize rd
+intersect (Ray ro rd) m@(M (Mesh s _ v f vn fn b)) = case catMaybes . elems $ possHits of
                                 [] -> Nothing
                                 a  -> Just . P.head . L.sort $ a
-                            where
-                                possHits = case s of
-                                        Flat -> hitsFlat v fn `IM.mapWithKey` f
-                                        --Phong -> hitsPhong v n <$> f
-                                        _ -> undefined
-                                hitsFlat :: IntMap (V3 Float) -> IntMap (V3 Float) -> Int -> V3 Int -> Maybe Collision
-                                hitsFlat verts norm f (V3 w1 w2 w3) =
-                                    if det == 0 || t < epsilon || not det2
-                                            then Nothing
-                                            else Just $ Collision pos (norm IM.! f) t m
-                                    where
-                                        ! det = dot rd' (norm IM.! f) --do we hit the plane
-                                        rd' = normalize rd
-                                        t = (dot ((verts IM.! w1) - ro) (norm IM.! f))/det --when do we hit the plane
-                                        pos = ro + t *^ rd'                                --where do we hit the plane
-                                        v1 = (verts IM.! w2) - (verts IM.! w1)
-                                        v2 = (verts IM.! w3) - (verts IM.! w1)
-                                        det2m = fromJust $ inv33 $ V3 v1 v2 (norm IM.! f)  -- base-change-matrix into triangle-coordinates
-                                        det2v = det2m !* (pos - (verts IM.! w1))
-                                        -- fromJust is justified as we only make a base-change and all 3
-                                        -- vectors are linear independent.
-                                        det2 =     det2v ^. _x > 0 && det2v ^. _y > 0
-                                                && det2v ^. _x + det2v ^. _y < 1
-
-                                --hitsPhong :: IntMap (V3 Float) -> IntMap (V3 Float) -> V3 Int -> Maybe Collision
+                where
+                    possHits = case s of
+                        Flat -> hitsFlat v fn `IM.mapWithKey` f
+                        --Phong -> hitsPhong v n <$> f
+                        _ -> undefined
+                    hitsFlat :: IntMap (V3 Float) -> IntMap (V3 Float) -> Int -> V3 Int -> Maybe Collision
+                    hitsFlat verts norm f (V3 w1 w2 w3) =
+                        if det == 0 || t < epsilon || not det2
+                            then Nothing
+                            else D.trace (show t ++ "\t" ++ show pos) (Just $ Collision pos (norm IM.! f) t m)
+                        where
+                            ! det = dot rd' (norm IM.! f) --do we hit the plane
+                            rd' = normalize rd
+                            t = (dot ((verts IM.! w1) - ro) (norm IM.! f))/det --when do we hit the plane
+                            pos = ro + t *^ rd'                                --where do we hit the plane
+                            v1 = (verts IM.! w2) - (verts IM.! w1)
+                            v2 = (verts IM.! w3) - (verts IM.! w1)
+                            det2m = fromJust $ inv33 $ V3 v1 v2 (norm IM.! f)  -- base-change-matrix into triangle-coordinates
+                            det2v = det2m !* (pos - (verts IM.! w1))
+                            -- fromJust is justified as we only make a base-change and all 3
+                            -- vectors are linear independent.
+                            det2 =     det2v ^. _x > 0 && det2v ^. _y > 0
+                                    && det2v ^. _x + det2v ^. _y < 1
+                    --hitsPhong :: IntMap (V3 Float) -> IntMap (V3 Float) -> V3 Int -> Maybe Collision
 
 -- deprecated - wrong calculation of rays.
 rotCam :: Float -> Float -> Int -> Int -> V3 Float -> V3 Float -> Float -> V3 Float

@@ -227,7 +227,7 @@ parseMesh' s m = do
                           b = F.foldl' minmax (V3 (-infty) (-infty) (-infty), V3 infty infty infty) mv
                           minmax (maxin,minin) vec = (max <$> maxin <*> vec, min <$> minin <*> vec)
                           infty = 9999999999999 :: Float
-            return $ OpI Mesh
+            return $ D.trace ("verts: "++show verts++"\nfaces:"++show faces) (OpI Mesh
                         { meshShading     = s
                         , meshMaterial    = m
                         , meshVertices    = mv
@@ -235,7 +235,7 @@ parseMesh' s m = do
                         , meshNormals     = mn
                         , meshFaceNormals = mfn
                         , meshBounds      = bounds
-                        }
+                        })
 
 parseTriangle :: Parser (V3 Int)
 parseTriangle = do
