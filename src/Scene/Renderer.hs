@@ -160,12 +160,12 @@ intersect (Ray ro rd) m@(M (Mesh s _ v f n fn b)) = case catMaybes . elems $ pos
                                         pos = ro + t *^ rd'                                --where do we hit the plane
                                         v1 = (verts IM.! w2) - (verts IM.! w1)
                                         v2 = (verts IM.! w3) - (verts IM.! w1)
-                                        det2m = V3 (normalize v1) (normalize v2) (norm IM.! f) -- !* (pos - (verts IM.! w2))
+                                        det2m = fromJust $ inv33 $ V3 v1 v2 (norm IM.! f)  -- base-change-matrix into triangle-coordinates
                                         det2v = det2m !* (pos - (verts IM.! w1))
                                         -- fromJust is justified as we only make a base-change and all 3
                                         -- vectors are linear independent.
                                         det2 =     det2v ^. _x > 0 && det2v ^. _y > 0
-                                                && det2v ^. _x < 1 && det2v ^. _y < 1
+                                                && det2v ^. _x + det2v ^. _y < 1
 
                                 --hitsPhong :: IntMap (V3 Float) -> IntMap (V3 Float) -> V3 Int -> Maybe Collision
 
