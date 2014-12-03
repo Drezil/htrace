@@ -108,11 +108,10 @@ main = do
             putStrLn $ "reading and parsing "++ show a
             !f <- B.readFile a
             r <- runEitherT $ validateAndParseScene f (dropFileName a)
-            print r
             case r of
               Left error -> putStrLn $ "Error: " ++ error
               Right s -> do
-                putStrLn "redering..."
+                putStrLn "rendering..."
                 let (w,h)  = (width . sceneCamera $ s, height . sceneCamera $ s)
                     imvec = fromList ((render w h s <$> [0..w*h-1]) `using` parListChunk w rseq)
                     im     = generateImage (v3ToPixel w imvec) w h

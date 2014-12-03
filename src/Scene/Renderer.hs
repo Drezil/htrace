@@ -146,7 +146,7 @@ intersect r@(Ray ro rd) m@(M (Mesh s _ v f vn fn b)) = case catMaybes . elems $ 
                 where
                     possHits = if inBounds b r then case s of
                         Flat -> hitsFlat v fn `IM.mapWithKey` f
-                        Phong -> IM.fromList [] --hitsPhong v n <$> f
+                        Phong -> hitsPhong v vn fn `IM.mapWithKey` f
                         else
                             IM.fromList []
                     inBounds :: BoundingBox -> Ray -> Bool
@@ -174,7 +174,7 @@ intersect r@(Ray ro rd) m@(M (Mesh s _ v f vn fn b)) = case catMaybes . elems $ 
                     hitsFlat verts norm f (V3 w1 w2 w3) =
                         if det == 0 || t < epsilon || not det2
                             then Nothing
-                            else Just $ Collision pos (norm IM.! f) t m
+                            else Just $ Collision (pos+10*epsilon *^ (norm IM.! f)) (norm IM.! f) t m
                         where
                             ! det = dot rd' (norm IM.! f) --do we hit the plane
                             rd' = normalize rd
@@ -188,7 +188,27 @@ intersect r@(Ray ro rd) m@(M (Mesh s _ v f vn fn b)) = case catMaybes . elems $ 
                             -- vectors are linear independent.
                             det2 =     det2v ^. _x >= 0 && det2v ^. _y >= 0
                                     && det2v ^. _x + det2v ^. _y <= 1
-                    --hitsPhong :: IntMap (V3 Float) -> IntMap (V3 Float) -> V3 Int -> Maybe Collision
+                    hitsPhong :: IntMap (V3 Float) -> IntMap (V3 Float) -> IntMap (V3 Float) -> Int -> V3 Int -> Maybe Collision
+                    hitsPhong verts vnorm fnorm f (V3 w1 w2 w3) =
+                        if det == 0 || t < epsilon || not det2
+                            then Nothing
+                            else Just $ Collision (pos + 10*epsilon *^ vns) vns t m
+                        where
+                            ! det = dot rd' (fnorm IM.! f)
+                            rd' = normalize rd
+                            t = (dot ((verts IM.! w1) - ro) (fnorm IM.! f))/det
+                            pos = ro + t *^ rd'
+                            v1 = (verts IM.! w2) - (verts IM.! w1)
+                            v2 = (verts IM.! w3) - (verts IM.! w1)
+                            det2m = fromJust $ inv33 $ transpose $ V3 v1 v2 (fnorm IM.! f)
+                            det2v = det2m !* (pos - (verts IM.! w1))
+                            det2 =    det2v ^. _x >= 0 && det2v ^. _y >= 0
+                                   && det2v ^. _x + det2v ^. _y <= 1
+                            vns = (sqrt (sqr (    det2v ^. _x) + sqr (    det2v ^. _y))) *^ (vnorm IM.! w1)
+                                + (sqrt (sqr (1 - det2v ^. _x) + sqr (    det2v ^. _y))) *^ (vnorm IM.! w2)
+                                + (sqrt (sqr (    det2v ^. _x) + sqr (1 - det2v ^. _y))) *^ (vnorm IM.! w3)
+                            sqr = \x -> x * x
+
 
 -- deprecated - wrong calculation of rays.
 rotCam :: Float -> Float -> Int -> Int -> V3 Float -> V3 Float -> Float -> V3 Float
