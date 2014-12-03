@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, BangPatterns #-}
 module Scene.Parser (parseScene, parseMesh) where
 
 import Control.Applicative
@@ -201,12 +201,12 @@ parseMesh' s m = do
             skipSpace
             _ <- decimal --ignored in our OFF-Files
             skipSpace
-            verts <- D.trace (show v ++ " verts") $ A8.count v parseVector
-            faces <- D.trace (show f ++ " faces") $ A8.count f parseTriangle
+            ! verts <- D.trace (show v ++ " verts") $ A8.count v parseVector
+            ! faces <- D.trace (show f ++ " faces") $ A8.count f parseTriangle
             -- whatever should be parsed afterwards in OFF..
             let
-                mv = IM.fromList $ P.zip [0..] verts
-                mf = IM.fromList $ P.zip [0..] faces
+                ! mv = IM.fromList $ P.zip [0..] verts
+                ! mf = IM.fromList $ P.zip [0..] faces
                 mfn = normal mv <$> mf
                 normal :: IntMap (V3 Float) -> V3 Int -> V3 Float
                 normal verts (V3 v1 v2 v3) = normalize $ cross (verts ! v2 - verts ! v1)
@@ -217,7 +217,7 @@ parseMesh' s m = do
                                         --TODO: weight sum with opening-angle!
                             where
                                 fs = keys $ IM.filter (\(V3 a b c) -> P.any (==i) [a,b,c]) faces
-                bounds = f b
+                ! bounds = f b
                        where
                           f ((V3 a b c),(V3 x y z)) = BoundingBox
                                                       { boundX = (a,x)
@@ -227,7 +227,7 @@ parseMesh' s m = do
                           b = F.foldl' minmax (V3 (-infty) (-infty) (-infty), V3 infty infty infty) mv
                           minmax (maxin,minin) vec = (max <$> maxin <*> vec, min <$> minin <*> vec)
                           infty = 9999999999999 :: Float
-            return $ D.trace ("verts: "++show verts++"\nfaces:"++show faces) (OpI Mesh
+            return $ OpI Mesh
                         { meshShading     = s
                         , meshMaterial    = m
                         , meshVertices    = mv
@@ -235,7 +235,7 @@ parseMesh' s m = do
                         , meshNormals     = mn
                         , meshFaceNormals = mfn
                         , meshBounds      = bounds
-                        })
+                        }
 
 parseTriangle :: Parser (V3 Int)
 parseTriangle = do

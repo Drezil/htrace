@@ -1,5 +1,5 @@
 # camera: eye, center, up, fovy, width, height
-camera 5 2 5  0 0 0  0 1 0  45  50 50
+camera 5 2 5  0 0 0  0 1 0  45  500 500
 
 # recursion depth
 depth  1

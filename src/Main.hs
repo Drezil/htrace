@@ -89,6 +89,7 @@ initializeMeshes p = traverse (initializeMeshes' p)
                                             let filename = p </> (B8.unpack f) in
                                             do
                                             d <- lift $ B.readFile filename
+                                            lift $ print filename
                                             mesh <- hoistEither $ parseMesh s m d
                                             return mesh
                 initializeMeshes' _ a = return a
@@ -119,4 +120,4 @@ main = do
 v3ToPixel :: Int -> Vector (V3 Word8) -> Int -> Int -> PixelRGB8
 v3ToPixel w vec x y = PixelRGB8 r g b
             where
-                V3 r g b = vec ! (x*w+y)
+                V3 r g b = vec ! (y*w+x)

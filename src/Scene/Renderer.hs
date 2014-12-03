@@ -39,8 +39,8 @@ render w h s index = V3 (ci cr) (ci cg) (ci cb)
             (V3 cr cg cb) = getColorFromRay (sceneRecursions s) ray s
 
             ray@(Ray co _) = camRay x y (sceneCamera s)
-            y = fromIntegral $ h - (index `mod` w) - 1
-            x = fromIntegral $ index `div` w
+            y = fromIntegral $ h - (index `div` w) - 1
+            x = fromIntegral $ index `mod` w
             ci = floor . (clamp 0 255) . (*255)
             --wrong format:
             --Ray (eye cam) $ rotCam x y w h (center cam - eye cam) (up cam) (fovy cam)
@@ -152,7 +152,7 @@ intersect (Ray ro rd) m@(M (Mesh s _ v f vn fn b)) = case catMaybes . elems $ po
                     hitsFlat verts norm f (V3 w1 w2 w3) =
                         if det == 0 || t < epsilon || not det2
                             then Nothing
-                            else D.trace (show t ++ "\t" ++ show pos) (Just $ Collision pos (norm IM.! f) t m)
+                            else Just $ Collision pos (norm IM.! f) t m
                         where
                             ! det = dot rd' (norm IM.! f) --do we hit the plane
                             rd' = normalize rd
@@ -160,12 +160,12 @@ intersect (Ray ro rd) m@(M (Mesh s _ v f vn fn b)) = case catMaybes . elems $ po
                             pos = ro + t *^ rd'                                --where do we hit the plane
                             v1 = (verts IM.! w2) - (verts IM.! w1)
                             v2 = (verts IM.! w3) - (verts IM.! w1)
-                            det2m = fromJust $ inv33 $ V3 v1 v2 (norm IM.! f)  -- base-change-matrix into triangle-coordinates
+                            det2m = fromJust $ inv33 $ transpose $ V3 v1 v2 (norm IM.! f)  -- base-change-matrix into triangle-coordinates
                             det2v = det2m !* (pos - (verts IM.! w1))
                             -- fromJust is justified as we only make a base-change and all 3
                             -- vectors are linear independent.
-                            det2 =     det2v ^. _x > 0 && det2v ^. _y > 0
-                                    && det2v ^. _x + det2v ^. _y < 1
+                            det2 =     det2v ^. _x >= 0 && det2v ^. _y >= 0
+                                    && det2v ^. _x + det2v ^. _y <= 1
                     --hitsPhong :: IntMap (V3 Float) -> IntMap (V3 Float) -> V3 Int -> Maybe Collision
 
 -- deprecated - wrong calculation of rays.
