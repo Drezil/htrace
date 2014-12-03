@@ -204,9 +204,10 @@ intersect r@(Ray ro rd) m@(M (Mesh s _ v f vn fn b)) = case catMaybes . elems $ 
                             det2v = det2m !* (pos - (verts IM.! w1))
                             det2 =    det2v ^. _x >= 0 && det2v ^. _y >= 0
                                    && det2v ^. _x + det2v ^. _y <= 1
-                            vns = (sqrt (sqr (    det2v ^. _x) + sqr (    det2v ^. _y))) *^ (vnorm IM.! w1)
-                                + (sqrt (sqr (1 - det2v ^. _x) + sqr (    det2v ^. _y))) *^ (vnorm IM.! w2)
-                                + (sqrt (sqr (    det2v ^. _x) + sqr (1 - det2v ^. _y))) *^ (vnorm IM.! w3)
+                            vns = normalize $
+                                  (0.5 - sqrt ((sqr (det2v ^. _x) + sqr (det2v ^. _y))/2)) *^ (vnorm IM.! w1)
+                                + ((det2v ^. _y)/2) *^ (vnorm IM.! w2)
+                                + ((det2v ^. _x)/2) *^ (vnorm IM.! w3)
                             sqr = \x -> x * x
 
 
