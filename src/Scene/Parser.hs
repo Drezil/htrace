@@ -127,6 +127,7 @@ parsePlane = do
         c <- parseVector
         n <- parseVector
         m <- parseMaterial
+        skipSpace
         return $ OpP Plane
                { planeCenter = c
                , planeNormal = normalize n
@@ -139,6 +140,7 @@ parseSphere = do
         skipSpace
         r <- double
         m <- parseMaterial
+        skipSpace
         return $ OpS Sphere
                { sphereCenter = p
                , sphereRadius = (fromRational . toRational) r

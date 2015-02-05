@@ -76,6 +76,6 @@ executable raytrace
   -- Base language which the package is written in.
   default-language:    Haskell2010
   
-  ghc-options: -Odph -rtsopts -threaded -fno-liberate-case -funfolding-use-threshold1000 -funfolding-keeness-factor1000 -optlo-O3 -fllvm -eventlog
+  ghc-options: -Odph -rtsopts -threaded -fno-liberate-case -funfolding-use-threshold1000 -funfolding-keeness-factor1000 -optlo-O2 -eventlog -fllvm
   -- ghc-options: -Odph -fno-liberate-case -funfolding-use-threshold1000 -funfolding-keeness-factor1000 -optlo-O3 -fllvm -prof -auto-all
 

@@ -15,5 +15,5 @@ light -1 10 -1  1.0 0.2 0.2
 light 10 0 5    0.2 0.2 1.0
 
 # mesh: filename, FLAT/SMOOTH, material
-mesh cube.off FLAT  0.5 0.5 0.5  0.5 0.5 0.5  0.0 0.0 0.0  0.0  0.0
-#mesh cube.off PHONG  0.5 0.5 0.5  0.5 0.5 0.5  0.0 0.0 0.0  0.0  0.0
+#mesh cube.off FLAT  0.5 0.5 0.5  0.5 0.5 0.5  0.0 0.0 0.0  0.0  0.0
+mesh cube.off PHONG  0.5 0.5 0.5  0.5 0.5 0.5  0.0 0.0 0.0  0.0  0.0
